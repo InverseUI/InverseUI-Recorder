@@ -2,8 +2,8 @@
 // Each constant includes implementation details and handler mappings
 
 /**
- * MOUSE ACTIONS
- * Implemented in: action/mouse_actions.js
+ * CLICK ACTIONS
+ * Implemented in: action/events/click.js
  * Handles: clicks, double-clicks, hover, drag & drop, context menu
  */
 export const MOUSE_ACTIONS = {
@@ -25,7 +25,7 @@ export const MOUSE_ACTIONS = {
 
 /**
  * KEYBOARD ACTIONS
- * Implemented in: action/keyboard_actions.js
+ * Implemented in: action/events/keyboard.js
  * Handles: key presses, shortcuts, navigation keys
  */
 export const KEYBOARD_ACTIONS = {
@@ -33,14 +33,15 @@ export const KEYBOARD_ACTIONS = {
 };
 
 /**
- * FORM ACTIONS
- * Implemented in: action/form_actions.js
+ * INPUT ACTIONS
+ * Implemented in: action/events/input.js
  * Handles: form inputs, changes, submission
  */
 export const FORM_ACTIONS = {
     // Essential form events for Selenium automation
     SET: "SET",                               // Handler: onChange -> SET (field value changes)
-    
+    INPUT: "INPUT",                           // Handler: onInput -> INPUT (text input for autocomplete, etc.)
+
     // Text selection
     SELECT: "SELECT",                         // Handler: onSelect
     
@@ -53,20 +54,8 @@ export const FORM_ACTIONS = {
 };
 
 /**
- * CLIPBOARD ACTIONS
- * Implemented in: action/clipboard_actions.js
- * Handles: copy, cut, paste, selection changes
- */
-export const CLIPBOARD_ACTIONS = {
-    COPY: "COPY",                             // Handler: onCopy -> COPY
-    CUT: "CUT",                               // Handler: onCut -> CUT
-    PASTE: "PASTE",                           // Handler: onPaste -> PASTE
-    SELECTION_CHANGE: "SELECTION_CHANGE"      // Handler: onSelectionChange -> SELECTION_CHANGE
-};
-
-/**
  * WINDOW ACTIONS
- * Implemented in: action/window_actions.js
+ * Implemented in: action/events/window.js
  * Handles: window events, scrolling, navigation, document lifecycle
  */
 export const WINDOW_ACTIONS = {
@@ -106,21 +95,16 @@ export const ASSERTION_ACTIONS = {
 export const ACTION_TYPES = {
     // Mouse actions
     ...MOUSE_ACTIONS,
-    
+
     // Keyboard actions
     ...KEYBOARD_ACTIONS,
-    
+
     // Form actions
     ...FORM_ACTIONS,
-    
-    // Clipboard actions
-    ...CLIPBOARD_ACTIONS,
-    
+
     // Window actions
     ...WINDOW_ACTIONS,
-    
-    
-    
+
     // Assertion actions
     ...ASSERTION_ACTIONS
 };
@@ -130,9 +114,8 @@ export const ACTION_TYPES = {
  */
 export const ACTION_CATEGORIES = {
     MOUSE: 'MOUSE',
-    KEYBOARD: 'KEYBOARD', 
+    KEYBOARD: 'KEYBOARD',
     FORM: 'FORM',
-    CLIPBOARD: 'CLIPBOARD',
     WINDOW: 'WINDOW',
     ASSERTION: 'ASSERTION'
 };
@@ -142,11 +125,10 @@ export const ACTION_CATEGORIES = {
  * Implementation file mapping for each action category
  */
 export const IMPLEMENTATION_FILES = {
-    [ACTION_CATEGORIES.MOUSE]: 'modules/action/mouse_actions.js',
-    [ACTION_CATEGORIES.KEYBOARD]: 'modules/action/keyboard_actions.js',
-    [ACTION_CATEGORIES.FORM]: 'modules/action/form_actions.js',
-    [ACTION_CATEGORIES.CLIPBOARD]: 'modules/action/clipboard_actions.js',
-    [ACTION_CATEGORIES.WINDOW]: 'modules/action/window_actions.js',
+    [ACTION_CATEGORIES.MOUSE]: 'modules/action/events/click.js',
+    [ACTION_CATEGORIES.KEYBOARD]: 'modules/action/events/keyboard.js',
+    [ACTION_CATEGORIES.FORM]: 'modules/action/events/input.js',
+    [ACTION_CATEGORIES.WINDOW]: 'modules/action/events/window.js',
     [ACTION_CATEGORIES.ASSERTION]: 'util/dom_utils.js'
 };
 
@@ -165,7 +147,10 @@ export const MESSAGE_HANDLER_MAPPING = {
             button: request.button,
             coordinates: request.coordinates,
             content: request.content,
-            dropdown: request.dropdown  // Include dropdown data if present
+            selection: request.selection,  // Unified selection data (native-select, aria, heuristic, radio, checkbox, button-group)
+            ariaSnapshot: request.ariaSnapshot,  // Text-based semantic context
+            targetRef: request.targetRef,  // Reference to clicked element in snapshot
+            screenshot: request.screenshot  // Visual context for AI
         })
     },
     'onDblClick': { 
@@ -279,7 +264,20 @@ export const MESSAGE_HANDLER_MAPPING = {
             selectedOptions: request.selectedOptions,
             files: request.files,
             fieldInfo: request.fieldInfo,
-            dropdown: request.dropdown  // Include dropdown data if present
+            selection: request.selection,  // Unified selection data if present
+            ariaSnapshot: request.ariaSnapshot,  // ARIA snapshot for context (replaces screenshot)
+            targetRef: request.targetRef  // Reference to interacted element in snapshot
+        })
+    },
+    'onInput': {
+        actionType: ACTION_TYPES.INPUT,
+        category: ACTION_CATEGORIES.FORM,
+        handler: (request) => ({
+            browserAction: ACTION_TYPES.INPUT,
+            xpath: request.xPath,
+            content: request.content,
+            type: request.type,
+            fieldInfo: request.fieldInfo
         })
     },
     'onSelect': { 
@@ -312,8 +310,8 @@ export const MESSAGE_HANDLER_MAPPING = {
             xpath: request.xPath
         })
     },
-    'onInvalid': { 
-        actionType: ACTION_TYPES.INVALID, 
+    'onInvalid': {
+        actionType: ACTION_TYPES.INVALID,
         category: ACTION_CATEGORIES.FORM,
         handler: (request) => ({
             browserAction: ACTION_TYPES.INVALID,
@@ -322,48 +320,7 @@ export const MESSAGE_HANDLER_MAPPING = {
             validationMessage: request.validationMessage
         })
     },
-    
-    // Clipboard event handlers
-    'onCopy': { 
-        actionType: ACTION_TYPES.COPY, 
-        category: ACTION_CATEGORIES.CLIPBOARD,
-        handler: (request) => ({
-            browserAction: ACTION_TYPES.COPY,
-            xpath: request.xPath,
-            clipboardData: request.clipboardData,
-            targetInfo: request.targetInfo
-        })
-    },
-    'onCut': { 
-        actionType: ACTION_TYPES.CUT, 
-        category: ACTION_CATEGORIES.CLIPBOARD,
-        handler: (request) => ({
-            browserAction: ACTION_TYPES.CUT,
-            xpath: request.xPath,
-            clipboardData: request.clipboardData,
-            targetInfo: request.targetInfo
-        })
-    },
-    'onPaste': { 
-        actionType: ACTION_TYPES.PASTE, 
-        category: ACTION_CATEGORIES.CLIPBOARD,
-        handler: (request) => ({
-            browserAction: ACTION_TYPES.PASTE,
-            xpath: request.xPath,
-            pasteData: request.pasteData,
-            targetInfo: request.targetInfo
-        })
-    },
-    'onSelectionChange': { 
-        actionType: ACTION_TYPES.SELECTION_CHANGE, 
-        category: ACTION_CATEGORIES.CLIPBOARD,
-        handler: (request) => ({
-            browserAction: ACTION_TYPES.SELECTION_CHANGE,
-            xpath: request.xPath,
-            selection: request.selection
-        })
-    },
-    
+
     // Window event handlers
     'onWindowResize': { 
         actionType: ACTION_TYPES.WINDOW_RESIZE, 
@@ -415,13 +372,23 @@ export const MESSAGE_HANDLER_MAPPING = {
             elementXPath: request.elementXPath
         })
     },
-    'onPopState': { 
-        actionType: ACTION_TYPES.POPSTATE, 
+    'onPopState': {
+        actionType: ACTION_TYPES.POPSTATE,
         category: ACTION_CATEGORIES.WINDOW,
         handler: (request) => ({
             browserAction: ACTION_TYPES.POPSTATE,
             url: request.url,
             state: request.state,
+            timestamp: request.timestamp
+        })
+    },
+    'onUrlChange': {
+        actionType: ACTION_TYPES.GO_TO_URL,
+        category: ACTION_CATEGORIES.WINDOW,
+        handler: (request) => ({
+            browserAction: ACTION_TYPES.GO_TO_URL,
+            url: request.url,
+            previousUrl: request.previousUrl,
             timestamp: request.timestamp
         })
     }

@@ -1,7 +1,8 @@
-// Form event handlers for comprehensive form interaction tracking
-import { getLabelForElement } from '../../util/dom_utils.js';
+// Input event handlers for comprehensive form interaction tracking
+import { getLabelForElement } from '../../../util/dom_utils.js';
+import { ariaSnapshotGenerator } from '../context/aria_snapshot.js';
 
-export class FormEventTracker {
+export class InputEventTracker {
     constructor(sendMessage, getXpaths) {
         this.sendMessage = sendMessage;
         this.getXpaths = getXpaths;
@@ -13,6 +14,15 @@ export class FormEventTracker {
      */
     setDropdownDetector(detector) {
         this.dropdownDetector = detector;
+    }
+
+    /**
+     * Promise version of sendMessage for async/await usage
+     */
+    sendMessageAsync(msg) {
+        return new Promise(resolve => {
+            this.sendMessage(msg, resolve);
+        });
     }
 
     init() {
@@ -126,74 +136,79 @@ export class FormEventTracker {
         });
     }
 
-    handleChange(event) {
-        this.sendMessage({
-            message: "recState"
-        }, (response) => {
-            if (response && response.recState) {
-                const target = event.target;
-                const xpaths = this.getXpaths(target);
-                const fieldInfo = this.getFieldInfo(target);
+    async handleChange(event) {
+        // Check recording state first
+        const recResponse = await this.sendMessageAsync({ message: "recState" });
 
-                // Special handling for different input types
-                console.log('📝 Form action detected: CHANGE', {
-                    element: target.tagName,
-                    type: target.type,
-                    name: target.name || target.id,
-                    value: target.value
-                });
+        if (!recResponse || !recResponse.recState) {
+            return;
+        }
 
-                let changeData = {
-                    message: "onChange",
-                    xPath: xpaths,
-                    content: target.value,
-                    fieldInfo: fieldInfo
-                };
+        const target = event.target;
+        const xpaths = this.getXpaths(target);
+        const fieldInfo = this.getFieldInfo(target);
 
-                if (target.type === 'checkbox' || target.type === 'radio') {
-                    changeData.checked = target.checked;
-                    changeData.value = target.value;
-                } else if (target.tagName === 'SELECT') {
-                    // Capture comprehensive dropdown information (Layer 1: Native)
-                    const selectedOptions = Array.from(target.selectedOptions).map(opt => ({
-                        value: opt.value,
-                        text: opt.text,
-                        index: opt.index
-                    }));
-
-                    // Capture ALL available options
-                    const allOptions = Array.from(target.options).map(opt => ({
-                        value: opt.value,
-                        text: opt.text,
-                        index: opt.index,
-                        selected: opt.selected,
-                        disabled: opt.disabled
-                    }));
-
-                    changeData.dropdown = {
-                        kind: 'native',
-                        label: getLabelForElement(target),
-                        selectedValue: target.value,
-                        selectedText: target.selectedOptions[0]?.text || '',
-                        selectedIndex: target.selectedIndex,
-                        allOptions: allOptions,
-                        isMultiple: target.multiple,
-                        detectionConfidence: 1.0
-                    };
-
-                    // Keep backward compatibility
-                    changeData.selectedOptions = selectedOptions;
-                } else if (target.type === 'file') {
-                    changeData.files = Array.from(target.files || []).map(file => ({
-                        name: file.name,
-                        size: file.size,
-                        type: file.type
-                    }));
-                }
-
-                this.sendMessage(changeData);
-            }
+        // Special handling for different input types
+        console.log('📝 Form action detected: CHANGE', {
+            element: target.tagName,
+            type: target.type,
+            name: target.name || target.id,
+            value: target.value
         });
+
+        let changeData = {
+            message: "onChange",
+            xPath: xpaths,
+            content: target.value,
+            fieldInfo: fieldInfo
+        };
+
+        if (target.type === 'checkbox' || target.type === 'radio') {
+            changeData.checked = target.checked;
+            changeData.value = target.value;
+        } else if (target.tagName === 'SELECT') {
+            // Capture comprehensive dropdown information (Layer 1: Native)
+            const selectedOptions = Array.from(target.selectedOptions).map(opt => ({
+                value: opt.value,
+                text: opt.text,
+                index: opt.index
+            }));
+
+            // Capture ALL available options
+            const allOptions = Array.from(target.options).map(opt => ({
+                value: opt.value,
+                text: opt.text,
+                index: opt.index,
+                selected: opt.selected,
+                disabled: opt.disabled
+            }));
+
+            changeData.dropdown = {
+                kind: 'native',
+                label: getLabelForElement(target),
+                selectedValue: target.value,
+                selectedText: target.selectedOptions[0]?.text || '',
+                selectedIndex: target.selectedIndex,
+                allOptions: allOptions,
+                isMultiple: target.multiple,
+                detectionConfidence: 1.0
+            };
+
+            // Keep backward compatibility
+            changeData.selectedOptions = selectedOptions;
+        } else if (target.type === 'file') {
+            changeData.files = Array.from(target.files || []).map(file => ({
+                name: file.name,
+                size: file.size,
+                type: file.type
+            }));
+        }
+
+        // Generate ARIA snapshot for context
+        const snapshot = ariaSnapshotGenerator.generateForElement(target);
+        changeData.ariaSnapshot = snapshot.yaml;
+
+        this.sendMessage(changeData);
     }
 
 

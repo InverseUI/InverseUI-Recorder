@@ -1,4 +1,4 @@
-import { ACTION_TYPES, DEBOUNCER_TIME } from '../modules/action/action_constants.js';
+import { ACTION_TYPES, DEBOUNCER_TIME } from '../modules/action/config/constants.js';
 
 /**
  * Validate XPath and clean it up if needed
@@ -73,24 +73,7 @@ export function compareAction(a, b) {
             // Don't deduplicate key presses - each one is important
             return 1;
             break;
-            
-          case ACTION_TYPES.DRAG_START:
-          case ACTION_TYPES.DRAG_END:
-          case ACTION_TYPES.DROP:
-            // Don't deduplicate drag operations - each is significant
-            return 1;
-            break;
-            
-          case ACTION_TYPES.DRAG_ENTER:
-          case ACTION_TYPES.DRAG_LEAVE:
-            // These might fire multiple times, so we can deduplicate
-            if (a.browserAction === b.browserAction && a.xpath[0] === b.xpath[0] && b.timestamp - a.timestamp <= DEBOUNCER_TIME) {
-                return 0;
-            } else {
-                return 1;
-            }
-            break;
-            
+
           case ACTION_TYPES.MOUSE_ENTER:
           case ACTION_TYPES.MOUSE_LEAVE:
             // Deduplicate rapid mouse enter/leave on same element
@@ -104,22 +87,6 @@ export function compareAction(a, b) {
           case ACTION_TYPES.MOUSE_MOVE:
             // Always record mouse moves but this might need throttling
             return 1;
-            break;
-            
-          case ACTION_TYPES.COPY:
-          case ACTION_TYPES.CUT:
-          case ACTION_TYPES.PASTE:
-            // Don't deduplicate clipboard operations
-            return 1;
-            break;
-            
-          case ACTION_TYPES.SELECTION_CHANGE:
-            // Deduplicate rapid selection changes
-            if (a.browserAction === b.browserAction && a.selectedText === b.selectedText && b.timestamp - a.timestamp <= DEBOUNCER_TIME) {
-                return 0;
-            } else {
-                return 1;
-            }
             break;
             
           case ACTION_TYPES.ELEMENT_SCROLL:

@@ -1,6 +1,12 @@
 // Element utilities - shared functions for element manipulation and validation
 // Can be used by both content scripts and background scripts
 
+// Class patterns that commonly contain question/label text (for hybrid extraction)
+const LABEL_CLASS_PATTERNS = [
+    'label', 'question', 'field', 'form-group', 'prompt',
+    'control-label', 'field-label', 'form-label', 'input-label'
+];
+
 // Standalone utility functions (can be used without instantiating a class)
 
 /**
@@ -128,6 +134,7 @@ export function getElementPosition(element) {
 /**
  * Extract label text for an element using multiple strategies
  * Priority: explicit label > aria-labelledby > aria-label > wrapping label > placeholder > legend
+ *           > aria-describedby > hybrid question text (for radio/checkbox) > nearby text fallback
  */
 export function getLabelForElement(element) {
     if (!element) return '';
@@ -163,6 +170,23 @@ export function getLabelForElement(element) {
         if (legend) return cleanLabelText(legend, element);
     }
 
+    // Strategy 7: aria-describedby (common for questions)
+    const describedBy = element.getAttribute('aria-describedby');
+    if (describedBy) {
+        const descEl = document.getElementById(describedBy);
+        if (descEl) return cleanLabelText(descEl, element);
+    }
+
+    // Strategy 8: For radio/checkbox - find question using hybrid approach
+    if (element.type === 'radio' || element.type === 'checkbox') {
+        const questionText = findQuestionText(element);
+        if (questionText) return questionText;
+    }
+
+    // Strategy 9: General fallback - DOM traversal for nearby text
+    const nearbyText = findNearbyLabelText(element);
+    if (nearbyText) return nearbyText;
+
     return '';
 }
 
@@ -183,6 +207,122 @@ function cleanLabelText(labelElement, inputElement) {
 
     // Get text and normalize whitespace
     return clone.textContent?.replace(/\s+/g, ' ').trim() || '';
+}
+
+/**
+ * Hybrid question text extraction for radio/checkbox
+ * Step 1: Class-based heuristics (preferred - more precise)
+ * Step 2: DOM traversal fallback (high recall)
+ */
+function findQuestionText(element) {
+    // === STEP 1: Class-based heuristics (preferred) ===
+    let ancestor = element.parentElement;
+    let depth = 0;
+
+    while (ancestor && depth < 6) {
+        // Check if ancestor has label-like class
+        const ancestorClasses = (ancestor.className || '').toString().toLowerCase();
+        const hasLabelClass = LABEL_CLASS_PATTERNS.some(p => ancestorClasses.includes(p));
+
+        if (hasLabelClass) {
+            // Look for children/siblings with question text
+            const questionEl = findQuestionElementInContainer(ancestor, element);
+            if (questionEl) {
+                const text = cleanLabelText(questionEl, element);
+                if (text && text.length > 10) return text;
+            }
+        }
+
+        // Also check children of ancestor for label-like elements
+        for (const child of ancestor.children) {
+            if (child.contains(element)) continue; // Skip branch containing our element
+
+            const childClasses = (child.className || '').toString().toLowerCase();
+            if (LABEL_CLASS_PATTERNS.some(p => childClasses.includes(p))) {
+                const text = child.textContent?.trim();
+                if (text && text.length > 10 && text.length < 500) {
+                    return text;
+                }
+            }
+        }
+
+        ancestor = ancestor.parentElement;
+        depth++;
+    }
+
+    // === STEP 2: DOM traversal fallback (high recall) ===
+    return findNearbyLabelText(element);
+}
+
+/**
+ * Find question element within a container
+ */
+function findQuestionElementInContainer(container, inputElement) {
+    // Look for semantic elements that typically contain questions
+    const selectors = [
+        'label:not(:has(input))',  // Labels that don't wrap inputs
+        '.question', '.label', '.prompt',
+        '[class*="label"]:not(input)',
+        'h3', 'h4', 'h5', 'p', 'span', 'div'
+    ];
+
+    for (const selector of selectors) {
+        try {
+            const el = container.querySelector(selector);
+            if (el && !el.contains(inputElement)) {
+                const text = el.textContent?.trim();
+                if (text && text.length > 10 && text.length < 500) {
+                    return el;
+                }
+            }
+        } catch (e) { /* Skip invalid selectors */ }
+    }
+
+    return null;
+}
+
+/**
+ * DOM traversal fallback - look for text in ancestors/siblings
+ * High recall: will find question text even without semantic markup
+ */
+function findNearbyLabelText(element) {
+    let parent = element.parentElement;
+    let depth = 0;
+
+    while (parent && depth < 5) {
+        // Check preceding siblings for text blocks
+        let sibling = parent.previousElementSibling;
+        let siblingDepth = 0;
+
+        while (sibling && siblingDepth < 3) {
+            const text = sibling.textContent?.trim();
+            // Must be substantial text (> 10 chars), not just "Yes"/"No"
+            if (text && text.length > 10 && text.length < 500) {
+                // Verify it's not another form field
+                if (!sibling.querySelector('input, select, textarea, button')) {
+                    return text;
+                }
+            }
+            sibling = sibling.previousElementSibling;
+            siblingDepth++;
+        }
+
+        // Check parent's first child if it looks like a label
+        const firstChild = parent.firstElementChild;
+        if (firstChild && !firstChild.contains(element)) {
+            const text = firstChild.textContent?.trim();
+            if (text && text.length > 10 && text.length < 500) {
+                if (!firstChild.querySelector('input, select, textarea, button')) {
+                    return text;
+                }
+            }
+        }
+
+        parent = parent.parentElement;
+        depth++;
+    }
+
+    return '';
 }
 
 // Element assertion helpers for QA testing - checking element existence, values, etc.

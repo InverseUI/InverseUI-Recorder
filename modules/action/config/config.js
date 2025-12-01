@@ -40,9 +40,11 @@ export const GEOMETRIC_PROXIMITY = {
 
 // CSS selectors for identifying popup containers
 export const POPUP_SELECTORS = [
+    // ARIA roles
     '[role="listbox"]',
     '[role="menu"]',
     '[role="dialog"]',
+    // Generic patterns
     '[class*="dropdown"]',
     '[class*="menu"]',
     '[class*="popup"]',
@@ -50,7 +52,17 @@ export const POPUP_SELECTORS = [
     '[class*="autocomplete"]',
     '[class*="suggest"]',
     '[class*="options"]',
-    '[class*="listbox"]'
+    '[class*="listbox"]',
+    // Framework-specific patterns
+    '[class*="select__menu"]',            // React Select
+    '[class*="MuiMenu"]',                 // Material-UI
+    '[class*="MuiAutocomplete-popper"]',  // Material-UI Autocomplete
+    '[class*="ant-select-dropdown"]',     // Ant Design
+    '[class*="ant-cascader-menus"]',      // Ant Design Cascader
+    '[class*="chakra-menu"]',             // Chakra UI
+    '[class*="rs-picker-menu"]',          // rsuite
+    '.tippy-content',                     // Tippy.js
+    '[data-radix-popper-content-wrapper]' // Radix UI
 ];
 
 // CSS selectors for identifying option elements

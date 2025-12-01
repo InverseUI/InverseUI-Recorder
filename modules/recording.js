@@ -1,7 +1,7 @@
 // Recording state management with API integration
 import { sendTrackToBackend } from '../api/track_uploader.js';
 import { checkAuth, openLoginPage } from '../api/auth.js';
-import { ACTION_TYPES } from './action/action_constants.js';
+import { ACTION_TYPES } from './action/config/constants.js';
 import { compareAction, fixXpathDoubleQuoteIssues, validateActionXPath } from '../util/action_utils.js';
 
 // Recording state

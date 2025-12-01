@@ -28,8 +28,7 @@ export class WindowEventTracker {
         // Scroll events (both window and element level)
         window.addEventListener('scroll', this.handleScroll.bind(this), true);
 
-        // History events
-        window.addEventListener('popstate', this.handlePopState.bind(this), true);
+        // Note: popstate is handled by NavigationTracker for unified URL change tracking
     }
 
     handleResize(event) {
@@ -137,18 +136,4 @@ export class WindowEventTracker {
         });
     }
 
-    handlePopState(event) {
-        this.sendMessage({
-            message: "recState"
-        }, (response) => {
-            if (response && response.recState) {
-                this.sendMessage({
-                    message: "onPopState",
-                    url: window.location.href,
-                    state: event.state,
-                    timestamp: Date.now()
-                });
-            }
-        });
-    }
 }

@@ -1,6 +1,6 @@
 // Import modules
 import { setupAuthListener } from './api/auth.js';
-import { ACTION_TYPES, MESSAGE_HANDLER_MAPPING } from './modules/action/action_constants.js';
+import { ACTION_TYPES, MESSAGE_HANDLER_MAPPING } from './modules/action/config/constants.js';
 import {
     getRecState,
     getActions,
@@ -140,13 +140,25 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         });
         return true;
     }
-    
-    
 
-    // Handle user action events from content script
+    // Handle screenshot capture request
+    if (request.message === "captureScreenshot") {
+        chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+            if (chrome.runtime.lastError) {
+                console.error('Screenshot capture error:', chrome.runtime.lastError);
+                sendResponse({ screenshot: null });
+            } else {
+                sendResponse({ screenshot: dataUrl });
+            }
+        });
+        return true; // async response
+    }
+
+    // Handle user action events from content script (no response needed)
     handleUserActionMessage(request, sendResponse);
-    
-    return true;
+
+    // Don't return true here - action messages don't need a response
+    return false;
 });
 
 /**

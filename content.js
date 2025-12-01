@@ -44,24 +44,10 @@ console.log('🚀 InverseUI content script LOADED');
             // Initialize communication channels
             initPageCommunication();
             initBackgroundCommunication((recording) => {
-                // Handle recording state changes - start/stop recording
+                // Just log recording state changes
+                // Enhanced handlers in click.js/input.js already check recState internally
+                // No need for extra listeners from startRecording()
                 console.log('Recording state changed:', recording);
-                
-                if (recording) {
-                    // Start recording - import and call recording functions
-                    import(chrome.runtime.getURL('modules/recording.js')).then(module => {
-                        module.startRecording(getXpaths, safeSendMessage);
-                    }).catch(err => {
-                        console.error('Failed to import recording.js for start:', err);
-                    });
-                } else {
-                    // Stop recording
-                    import(chrome.runtime.getURL('modules/recording.js')).then(module => {
-                        module.stopRecording();
-                    }).catch(err => {
-                        console.error('Failed to import recording.js for stop:', err);
-                    });
-                }
             });
             
             // Initialize comprehensive action tracking system

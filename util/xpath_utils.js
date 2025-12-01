@@ -168,7 +168,7 @@ export function getElementInfo_Moz(element) {
         }
         
         var tagName = (element.prefix ? element.prefix + ":" : "") + element.localName;
-        var pathIndex = (index || hasFollowingSiblings) ? "[" + (index + 1) + "]" : "";
+        var pathIndex = "[" + (index + 1) + "]";
         paths.splice(0, 0, tagName + pathIndex);
     }
     

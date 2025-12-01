@@ -1,11 +1,18 @@
 // Main behavior tracking module that combines all event trackers
-import { MouseEventTracker } from './mouse_actions.js';
-import { KeyboardEventTracker } from './keyboard_actions.js';
-import { FormEventTracker } from './form_actions.js';
+import {
+    ClickEventTracker,
+    InputEventTracker,
+    KeyboardEventTracker,
+    WindowEventTracker,
+    initializeNavigationTracking
+} from './events/index.js';
+import {
+    initializeDropdownDetection,
+    initializeFileUploadDetection,
+    initializeChoiceDetection,
+    initializeRadioDetection
+} from './context/index.js';
 import { ElementAssertions } from '../../util/dom_utils.js';
-import { ClipboardEventTracker } from './clipboard_actions.js';
-import { WindowEventTracker } from './window_actions.js';
-import { initializeDropdownDetection } from './dropdown_detection.js';
 
 export class ActionTracker {
     constructor(sendMessage, getXpaths) {
@@ -14,11 +21,10 @@ export class ActionTracker {
 
         // Initialize all trackers
         this.trackers = {
-            mouse: new MouseEventTracker(sendMessage, getXpaths),
+            click: new ClickEventTracker(sendMessage, getXpaths),
             keyboard: new KeyboardEventTracker(sendMessage, getXpaths),
-            form: new FormEventTracker(sendMessage, getXpaths),
+            input: new InputEventTracker(sendMessage, getXpaths),
             assertions: new ElementAssertions(sendMessage, getXpaths),
-            clipboard: new ClipboardEventTracker(sendMessage, getXpaths),
             window: new WindowEventTracker(sendMessage, getXpaths)
         };
 
@@ -78,12 +84,31 @@ export async function initializeActionTracking(sendMessage, getXpaths) {
         // Create and initialize the action tracker
         const actionTracker = new ActionTracker(sendMessage, getXpaths);
 
-        // Wire dropdown detector to mouse and form trackers
-        // - Mouse tracker uses it for reactive detection on clicks
-        // - Form tracker uses it to record input interactions for correlation
-        actionTracker.trackers.mouse.setDropdownDetector(dropdownDetector);
-        actionTracker.trackers.form.setDropdownDetector(dropdownDetector);
+        // Wire dropdown detector to click and input trackers
+        // - Click tracker uses it for reactive detection on clicks
+        // - Input tracker uses it to record input interactions for correlation
+        actionTracker.trackers.click.setDropdownDetector(dropdownDetector);
+        actionTracker.trackers.input.setDropdownDetector(dropdownDetector);
         console.log('✅ Dropdown detection wired to event trackers');
+
+        // Initialize file upload detection
+        const fileUploadDetector = initializeFileUploadDetection(getXpaths);
+        actionTracker.trackers.click.setFileUploadDetector(fileUploadDetector);
+        console.log('✅ File upload detection wired to click tracker');
+
+        // Initialize choice detection for Yes/No button groups
+        const choiceDetector = initializeChoiceDetection(getXpaths);
+        actionTracker.trackers.click.setChoiceDetector(choiceDetector);
+        console.log('✅ Choice detection wired to click tracker');
+
+        // Initialize radio/checkbox detection
+        const radioDetector = initializeRadioDetection(getXpaths);
+        actionTracker.trackers.click.setRadioDetector(radioDetector);
+        console.log('✅ Radio detection wired to click tracker');
+
+        // Initialize navigation tracking for cross-page URL context
+        initializeNavigationTracking(sendMessage);
+        console.log('✅ Navigation tracking initialized');
 
         // Initialize all trackers
         actionTracker.init();

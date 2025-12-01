@@ -19,9 +19,9 @@ import {
     POPUP_ARIA_ROLES,
     OPTION_ARIA_ROLES,
     POPUP_PARENT_ROLES
-} from './config.js';
+} from '../config/config.js';
 
-import { getLabelForElement } from '../../util/dom_utils.js';
+import { getLabelForElement } from '../../../util/dom_utils.js';
 
 
 /**
@@ -114,7 +114,17 @@ export class RecentInteractionTracker {
             Math.abs(triggerRect.top - popupRect.bottom)   // popup above trigger
         );
 
-        return verticalGap <= GEOMETRIC_PROXIMITY.MAX_VERTICAL_GAP;
+        if (verticalGap <= GEOMETRIC_PROXIMITY.MAX_VERTICAL_GAP) {
+            return true;
+        }
+
+        // Fallback: Check if popup width matches trigger (common pattern for Select2, Ant Design)
+        const widthMatch = Math.abs(triggerRect.width - popupRect.width) < 50;
+        if (widthMatch && popupRect.top >= triggerRect.top) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -153,6 +163,10 @@ export class RecentInteractionTracker {
  * Confidence: 0.95
  */
 export class ARIADropdownDetector {
+    constructor(interactionTracker = null) {
+        this.tracker = interactionTracker;
+    }
+
     /**
      * Detect if clicked element is an ARIA option
      * Returns full context if found, null otherwise
@@ -177,8 +191,21 @@ export class ARIADropdownDetector {
             const listbox = this.findParentListbox(clickedElement);
             if (!listbox) return null;
 
-            // Find trigger element (combobox that controls this listbox)
-            const trigger = this.findTriggerForListbox(listbox);
+            // Find trigger element - try ARIA first, then fall back to interaction tracker
+            let trigger = this.findTriggerForListbox(listbox);
+            let triggerValue = null;
+            let hadRecentTrigger = false;
+
+            // If no ARIA trigger found, try RecentInteractionTracker for autocomplete patterns
+            if (!trigger && this.tracker) {
+                const listboxRect = listbox.getBoundingClientRect();
+                const recentTrigger = this.tracker.findRecentTrigger(listboxRect);
+                if (recentTrigger) {
+                    trigger = recentTrigger.element;
+                    triggerValue = recentTrigger.value;
+                    hadRecentTrigger = true;
+                }
+            }
 
             // Extract all options
             const options = this.extractOptions(listbox);
@@ -189,6 +216,8 @@ export class ARIADropdownDetector {
             return {
                 kind: 'aria',
                 trigger: trigger,
+                triggerValue: triggerValue,
+                hadRecentTrigger: hadRecentTrigger,
                 popup: listbox,
                 clickedOption: clickedElement,
                 optionText: clickedOptionInfo?.text || clickedElement.textContent?.trim() || '',
@@ -218,10 +247,25 @@ export class ARIADropdownDetector {
         const listboxId = listbox.id;
         if (!listboxId) return null;
 
-        // Find element with aria-controls or aria-owns pointing to this listbox
-        return document.querySelector(
+        // Standard ARIA patterns: aria-controls or aria-owns
+        let trigger = document.querySelector(
             `[aria-controls="${listboxId}"],[aria-owns="${listboxId}"]`
         );
+        if (trigger) return trigger;
+
+        // aria-activedescendant pattern (React Select, Downshift)
+        trigger = document.querySelector(`[aria-activedescendant^="${listboxId}"]`);
+        if (trigger) return trigger;
+
+        // React Select ID pattern: listbox id = "react-select-X-listbox"
+        const reactSelectMatch = listboxId.match(/^react-select-(\d+)-listbox$/);
+        if (reactSelectMatch) {
+            const inputId = `react-select-${reactSelectMatch[1]}-input`;
+            trigger = document.getElementById(inputId);
+            if (trigger) return trigger;
+        }
+
+        return null;
     }
 
     /**
@@ -329,21 +373,24 @@ export class ReactiveHeuristicDetector {
      */
     looksLikePopup(element) {
         const style = window.getComputedStyle(element);
-        const classes = (element.className || '').toLowerCase();
+        // SVG elements have className.baseVal instead of string
+        const classes = (element.className?.baseVal ?? element.className ?? '').toString().toLowerCase();
         const role = element.getAttribute('role');
 
-        // Must be positioned (absolute/fixed) or have popup role
-        const isPositioned = ['absolute', 'fixed'].includes(style.position);
+        // Role-based should be auto-pass (most reliable signal)
         const hasPopupRole = POPUP_ARIA_ROLES.includes(role);
+        if (hasPopupRole) return true;
+
+        // Must be positioned (absolute/fixed) or have popup class
+        const isPositioned = ['absolute', 'fixed'].includes(style.position);
         const hasPopupClass = /dropdown|menu|popup|popper|autocomplete|suggest|listbox|options|combobox/.test(classes);
 
         // Must have multiple children (options)
         const hasMultipleChildren = element.children.length >= 2;
 
-        // Score-based decision
+        // Score-based decision for non-ARIA elements
         let score = 0;
         if (isPositioned) score += 2;
-        if (hasPopupRole) score += 3;
         if (hasPopupClass) score += 2;
         if (hasMultipleChildren) score += 1;
 
@@ -374,7 +421,8 @@ export class ReactiveHeuristicDetector {
      * Check if element looks like a selectable option
      */
     looksLikeOption(element) {
-        const classes = (element.className || '').toLowerCase();
+        // SVG elements have className.baseVal instead of string
+        const classes = (element.className?.baseVal ?? element.className ?? '').toString().toLowerCase();
         const role = element.getAttribute('role');
         const style = window.getComputedStyle(element);
 
@@ -441,14 +489,14 @@ export class ReactiveHeuristicDetector {
      * Find option candidates using heuristics
      */
     findOptionCandidates(popup) {
-        // Common option selectors
+        // Common option selectors (removed 'div[class]' - too broad)
         const selectorCandidates = [
             'li',
             '[class*="option"]',
-            '[class*="item"]',
+            '[class*="item"]:not([class*="menu-item-group"])',
             '[class*="suggestion"]',
             '[class*="result"]',
-            'div[class]'
+            '[class*="choice"]'
         ];
 
         const candidates = [];
@@ -529,12 +577,12 @@ export class DropdownDetector {
     constructor(getXpaths) {
         this.getXpaths = getXpaths;
         this.interactionTracker = new RecentInteractionTracker();
-        this.ariaDetector = new ARIADropdownDetector();
+        this.ariaDetector = new ARIADropdownDetector(this.interactionTracker);
         this.heuristicDetector = new ReactiveHeuristicDetector(this.interactionTracker);
     }
 
     /**
-     * Record an input event (call this from form_actions.js)
+     * Record an input event (call this from input_actions.js)
      */
     recordInput(element, value) {
         this.interactionTracker.recordInput(element, value);
@@ -559,15 +607,15 @@ export class DropdownDetector {
         if (!clickedElement) return clickData;
 
         try {
-            // Layer 1: Native SELECT (already handled in mouse_actions.js, skip if present)
-            if (clickData.dropdown?.kind === 'native') {
+            // Layer 1: Native SELECT (already handled in click_actions.js, skip if present)
+            if (clickData.selection?.kind === 'native-select') {
                 return clickData;
             }
 
             // Layer 2: ARIA detection (confidence: 0.95)
             const ariaResult = this.ariaDetector.detectARIAOption(clickedElement);
             if (ariaResult) {
-                clickData.dropdown = this.formatDetectionResult(ariaResult);
+                clickData.selection = this.formatDetectionResult(ariaResult);
                 console.log('✅ ARIA dropdown detected:', ariaResult.optionText);
                 return clickData;
             }
@@ -575,7 +623,7 @@ export class DropdownDetector {
             // Layer 3: Reactive heuristic detection (confidence: 0.85)
             const heuristicResult = this.heuristicDetector.analyzeClick(clickedElement);
             if (heuristicResult) {
-                clickData.dropdown = this.formatDetectionResult(heuristicResult);
+                clickData.selection = this.formatDetectionResult(heuristicResult);
                 console.log('✅ Heuristic dropdown detected:', heuristicResult.optionText);
                 return clickData;
             }
@@ -588,30 +636,38 @@ export class DropdownDetector {
     }
 
     /**
-     * Format detection result into consistent structure
+     * Format detection result into unified selection structure
      */
     formatDetectionResult(result) {
+        const questionText = result.trigger ? getLabelForElement(result.trigger) : '';
+
         return {
-            isDropdownOption: true,
             kind: result.kind,
-            label: result.trigger ? getLabelForElement(result.trigger) : '',
-            triggerSelector: result.trigger ? this.getSelector(result.trigger) : null,
-            triggerXPath: result.trigger ? this.getXpaths(result.trigger) : null,
-            triggerValue: result.triggerValue || null,
-            optionText: result.optionText,
-            optionValue: result.optionValue,
-            optionIndex: result.optionIndex,
-            popupSelector: this.getSelector(result.popup),
-            popupXPath: this.getXpaths(result.popup),
-            allOptions: result.allOptions.map(opt => ({
-                text: opt.text,
-                value: opt.value,
-                index: opt.index
-            })),
-            detectionMethod: result.kind,
-            detectionConfidence: result.confidence,
-            hadRecentTrigger: result.hadRecentTrigger ?? true
+            questionText: questionText,
+            selectedValue: result.optionValue,
+            selectedText: result.optionText,
+            selectedIndex: result.optionIndex,
+            allOptions: result.allOptions.map(opt => opt.text),
+            playwrightAction: 'click',
+            parameter: {
+                name: this.generateParamName(questionText),
+                type: 'choice'
+            }
         };
+    }
+
+    /**
+     * Generate parameter name from question text
+     */
+    generateParamName(question) {
+        if (!question) return 'DROPDOWN';
+        return question
+            .replace(/[?.,!:]/g, '')
+            .replace(/^(select|choose|pick)\s+/i, '')
+            .trim()
+            .toUpperCase()
+            .replace(/\s+/g, '_')
+            .substring(0, 30);
     }
 
     /**
@@ -670,11 +726,15 @@ export function initializeDropdownDetection(sendMessage, getXpaths) {
     }, 30000);  // Every 30 seconds
 
     // Cleanup on page unload
-    window.addEventListener('beforeunload', () => {
+    const cleanup = () => {
         clearInterval(cleanupInterval);
         detector.clear();
         console.log('🧹 Dropdown detection cleaned up');
-    });
+    };
+
+    // beforeunload doesn't always fire (bfcache, mobile browsers)
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('pagehide', cleanup);
 
     console.log('✅ Reactive dropdown detection initialized');
     return detector;
