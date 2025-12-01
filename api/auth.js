@@ -120,17 +120,12 @@ export async function openLoginPage(returnUrl = '') {
  */
 export function setupAuthListener() {
     // Listen for messages from the website
-    chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.type === 'AUTH_SUCCESS' && sender.url && isInverseUIWebsite(new URL(sender.url).hostname)) {
-            // Frontend handles token storage as cookies
             sendResponse({ success: true });
-            
-            // Let frontend handle the tab - don't close it
-            // Auth complete - no need to notify anyone
-            // User can start recording manually when ready
-            
-            return true; // Keep channel open for async response
+            return true;
         }
+        return false; // Don't handle other messages
     });
     
     // Also listen for auth via web navigation (for OAuth flows)

@@ -40,42 +40,6 @@ export class InputEventTracker {
         document.addEventListener('invalid', this.handleInvalid.bind(this), true);
     }
 
-    getFieldInfo(element) {
-        return {
-            tagName: element.tagName,
-            type: element.type || 'text',
-            name: element.name || '',
-            id: element.id || '',
-            label: getLabelForElement(element),
-            value: element.value || element.textContent || '',
-            checked: element.checked || false,
-            selectedIndex: element.selectedIndex || -1,
-            multiple: element.multiple || false,
-            required: element.required || false,
-            pattern: element.pattern || '',
-            minLength: element.minLength || -1,
-            maxLength: element.maxLength || -1,
-            min: element.min || '',
-            max: element.max || '',
-            step: element.step || '',
-            placeholder: element.placeholder || '',
-            readonly: element.readOnly || false,
-            disabled: element.disabled || false,
-            validity: element.validity ? {
-                valid: element.validity.valid,
-                valueMissing: element.validity.valueMissing,
-                typeMismatch: element.validity.typeMismatch,
-                patternMismatch: element.validity.patternMismatch,
-                tooLong: element.validity.tooLong,
-                tooShort: element.validity.tooShort,
-                rangeUnderflow: element.validity.rangeUnderflow,
-                rangeOverflow: element.validity.rangeOverflow,
-                stepMismatch: element.validity.stepMismatch,
-                customError: element.validity.customError
-            } : null
-        };
-    }
-
     /**
      * Handle focus events - record for dropdown correlation
      */
@@ -112,24 +76,12 @@ export class InputEventTracker {
         }, (response) => {
             if (response && response.recState) {
                 const xpaths = this.getXpaths(target);
-                const fieldInfo = this.getFieldInfo(target);
 
-                console.log('⌨️ Input action detected:', {
-                    element: target.tagName,
-                    type: target.type,
-                    name: target.name || target.id,
-                    value: target.value
-                });
-
-                const inputData = {
+                this.sendMessage({
                     message: "onInput",
                     xPath: xpaths,
-                    content: target.value,
-                    type: target.type,
-                    fieldInfo: fieldInfo
-                };
-
-                this.sendMessage(inputData);
+                    content: target.value
+                });
             } else {
                 console.log('❌ Recording not active, input ignored');
             }
@@ -146,21 +98,11 @@ export class InputEventTracker {
 
         const target = event.target;
         const xpaths = this.getXpaths(target);
-        const fieldInfo = this.getFieldInfo(target);
-
-        // Special handling for different input types
-        console.log('📝 Form action detected: CHANGE', {
-            element: target.tagName,
-            type: target.type,
-            name: target.name || target.id,
-            value: target.value
-        });
 
         let changeData = {
             message: "onChange",
             xPath: xpaths,
-            content: target.value,
-            fieldInfo: fieldInfo
+            content: target.value
         };
 
         if (target.type === 'checkbox' || target.type === 'radio') {
@@ -298,12 +240,10 @@ export class InputEventTracker {
             if (response && response.recState) {
                 const target = event.target;
                 const xpaths = this.getXpaths(target);
-                const fieldInfo = this.getFieldInfo(target);
 
                 this.sendMessage({
                     message: "onInvalid",
                     xPath: xpaths,
-                    fieldInfo: fieldInfo,
                     validationMessage: target.validationMessage || ''
                 });
             }
