@@ -161,7 +161,12 @@ export class ClickEventTracker {
             console.log('🔄 Target resolved from', rawTarget.tagName || rawTarget.nodeName, 'to', target.tagName);
         }
 
-        // Check recording state first
+        // Generate ARIA snapshot IMMEDIATELY before any async operations
+        // This captures the DOM state at the moment of click, not after the page reacts
+        const snapshot = ariaSnapshotGenerator.generateForElement(target);
+        console.log('📋 ARIA snapshot generated:', snapshot.yaml?.substring(0, 200) + '...');
+
+        // Check recording state (async - happens after snapshot is already captured)
         const recResponse = await this.sendMessageAsync({ message: "recState" });
         console.log('📝 Recording state response:', recResponse);
 
@@ -169,11 +174,6 @@ export class ClickEventTracker {
             console.log('❌ Recording not active, click ignored');
             return;
         }
-
-        // Generate ARIA snapshot for context
-        // This captures the semantic structure around the clicked element
-        const snapshot = ariaSnapshotGenerator.generateForElement(target);
-        console.log('📋 ARIA snapshot generated:', snapshot.yaml?.substring(0, 200) + '...');
 
         const xpaths = this.getXpaths(target);
         const coords = { x: clickX, y: clickY };
