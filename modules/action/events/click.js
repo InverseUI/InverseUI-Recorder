@@ -1,6 +1,7 @@
 // Click event handlers for comprehensive tracking
 import { getLabelForElement } from '../../../util/dom_utils.js';
 import { ariaSnapshotGenerator } from '../context/aria_snapshot.js';
+import { getPlaywrightSelector } from '../../../util/playwright_selector.js';
 
 export class ClickEventTracker {
     constructor(sendMessage, getXpaths) {
@@ -184,7 +185,8 @@ export class ClickEventTracker {
             xPath: xpaths,
             coordinates: coords,
             button: event.button,
-            ariaSnapshot: snapshot.yaml
+            ariaSnapshot: snapshot.yaml,
+            locator: getPlaywrightSelector(target)
         };
 
         // Layer 1: Check if clicking on a native SELECT element or OPTION within SELECT
@@ -210,12 +212,12 @@ export class ClickEventTracker {
 
             clickData.selection = {
                 kind: 'native-select',
-                questionText: questionText,
-                selectedValue: selectElement.value,
-                selectedText: selectElement.selectedOptions[0]?.text || '',
-                selectedIndex: selectElement.selectedIndex,
-                allOptions: allOptions.map(opt => opt.text),
-                playwrightAction: 'selectOption',
+                question: questionText,
+                value: selectElement.value,
+                label: selectElement.selectedOptions[0]?.text || '',
+                index: selectElement.selectedIndex,
+                options: allOptions.map(opt => opt.text),
+                action: 'selectOption',
                 isMultiple: selectElement.multiple,
                 parameter: {
                     name: this.generateParamName(questionText),
@@ -223,7 +225,7 @@ export class ClickEventTracker {
                 }
             };
 
-            console.log('📋 Native select detected:', clickData.selection.questionText);
+            console.log('📋 Native select detected:', clickData.selection.question);
         }
 
         // 2. Custom dropdown (ARIA + heuristic) - skip if already have selection or if it's a navigation control

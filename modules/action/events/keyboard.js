@@ -1,5 +1,6 @@
 // Keyboard event handlers for tracking key presses
 // Only tracks special keys - regular typing is captured by form change events
+import { getPlaywrightSelector } from '../../../util/playwright_selector.js';
 
 const SPECIAL_KEYS = ['Enter', 'Tab', 'Escape', 'Backspace', 'Delete'];
 const NAVIGATION_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'];
@@ -51,6 +52,7 @@ export class KeyboardEventTracker {
                     isSpecialKey: isSpecialKey,
                     isNavigation: isNavigation,
                     isShortcut: isShortcut,
+                    locator: getPlaywrightSelector(event.target),
                     target: {
                         tagName: event.target.tagName,
                         type: event.target.type || null

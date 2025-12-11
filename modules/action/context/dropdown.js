@@ -643,12 +643,12 @@ export class DropdownDetector {
 
         return {
             kind: result.kind,
-            questionText: questionText,
-            selectedValue: result.optionValue,
-            selectedText: result.optionText,
-            selectedIndex: result.optionIndex,
-            allOptions: result.allOptions.map(opt => opt.text),
-            playwrightAction: 'click',
+            question: questionText,
+            value: result.optionValue,
+            label: result.optionText,
+            index: result.optionIndex,
+            options: result.allOptions.map(opt => opt.text),
+            action: 'click',
             parameter: {
                 name: this.generateParamName(questionText),
                 type: 'choice'

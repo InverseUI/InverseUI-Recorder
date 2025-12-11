@@ -12,7 +12,7 @@ export class ChoiceDetector {
         const choiceInfo = this.detectChoiceGroup(clickedElement);
         if (choiceInfo) {
             clickData.selection = choiceInfo;
-            console.log('🔘 Button group detected:', choiceInfo.questionText || '(no question)', '→', choiceInfo.selectedValue);
+            console.log('🔘 Button group detected:', choiceInfo.question || '(no question)', '→', choiceInfo.value);
         }
         return clickData;
     }
@@ -45,12 +45,12 @@ export class ChoiceDetector {
 
         return {
             kind: 'button-group',
-            questionText: questionText,
-            selectedValue: buttonText,
-            selectedText: buttonText,
-            selectedIndex: selectedIndex,
-            allOptions: siblingButtons.map(btn => btn.textContent?.trim()),
-            playwrightAction: 'click',
+            question: questionText,
+            value: buttonText,
+            label: buttonText,
+            index: selectedIndex,
+            options: siblingButtons.map(btn => btn.textContent?.trim()),
+            action: 'click',
             // For Playwright code generation
             parameter: {
                 name: this.generateParamName(questionText),

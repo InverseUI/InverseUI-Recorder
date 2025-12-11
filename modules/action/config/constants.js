@@ -150,7 +150,8 @@ export const MESSAGE_HANDLER_MAPPING = {
             selection: request.selection,  // Unified selection data (native-select, aria, heuristic, radio, checkbox, button-group)
             ariaSnapshot: request.ariaSnapshot,  // Text-based semantic context
             targetRef: request.targetRef,  // Reference to clicked element in snapshot
-            screenshot: request.screenshot  // Visual context for AI
+            screenshot: request.screenshot,  // Visual context for AI
+            locator: request.locator  // Playwright locator method and params
         })
     },
     'onDblClick': { 
@@ -230,8 +231,8 @@ export const MESSAGE_HANDLER_MAPPING = {
     },
     
     // Keyboard event handlers
-    'onKeyDown': { 
-        actionType: ACTION_TYPES.KEY_PRESS, 
+    'onKeyDown': {
+        actionType: ACTION_TYPES.KEY_PRESS,
         category: ACTION_CATEGORIES.KEYBOARD,
         handler: (request) => {
             // Only process special keys, shortcuts, or navigation keys
@@ -245,7 +246,8 @@ export const MESSAGE_HANDLER_MAPPING = {
                     isShortcut: request.isShortcut,
                     isNavigation: request.isNavigation,
                     targetType: request.target.type,
-                    targetTagName: request.target.tagName
+                    targetTagName: request.target.tagName,
+                    locator: request.locator  // Playwright locator method and params
                 };
             }
             return null; // Skip non-special keys
@@ -266,7 +268,8 @@ export const MESSAGE_HANDLER_MAPPING = {
             fieldInfo: request.fieldInfo,
             selection: request.selection,  // Unified selection data if present
             ariaSnapshot: request.ariaSnapshot,  // ARIA snapshot for context (replaces screenshot)
-            targetRef: request.targetRef  // Reference to interacted element in snapshot
+            targetRef: request.targetRef,  // Reference to interacted element in snapshot
+            locator: request.locator  // Playwright locator method and params
         })
     },
     'onInput': {
@@ -277,7 +280,8 @@ export const MESSAGE_HANDLER_MAPPING = {
             xpath: request.xPath,
             content: request.content,
             type: request.type,
-            fieldInfo: request.fieldInfo
+            fieldInfo: request.fieldInfo,
+            locator: request.locator  // Playwright locator method and params
         })
     },
     'onSelect': { 

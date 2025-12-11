@@ -1,6 +1,7 @@
 // Input event handlers for comprehensive form interaction tracking
 import { getLabelForElement } from '../../../util/dom_utils.js';
 import { ariaSnapshotGenerator } from '../context/aria_snapshot.js';
+import { getPlaywrightSelector } from '../../../util/playwright_selector.js';
 
 export class InputEventTracker {
     constructor(sendMessage, getXpaths) {
@@ -80,7 +81,8 @@ export class InputEventTracker {
                 this.sendMessage({
                     message: "onInput",
                     xPath: xpaths,
-                    content: target.value
+                    content: target.value,
+                    locator: getPlaywrightSelector(target)
                 });
             } else {
                 console.log('❌ Recording not active, input ignored');
@@ -102,7 +104,8 @@ export class InputEventTracker {
         let changeData = {
             message: "onChange",
             xPath: xpaths,
-            content: target.value
+            content: target.value,
+            locator: getPlaywrightSelector(target)
         };
 
         if (target.type === 'checkbox' || target.type === 'radio') {

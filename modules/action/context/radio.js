@@ -17,7 +17,7 @@ export class RadioDetector {
         }
 
         clickData.selection = this.detectRadioGroup(clickedElement);
-        console.log('🔘 Radio/checkbox group detected:', clickData.selection?.questionText);
+        console.log('🔘 Radio/checkbox group detected:', clickData.selection?.question);
         return clickData;
     }
 
@@ -43,12 +43,12 @@ export class RadioDetector {
 
         return {
             kind: element.type,  // 'radio' or 'checkbox'
-            questionText: questionText,
-            selectedValue: selectedEl.value,
-            selectedText: this.getOptionText(selectedEl),
-            selectedIndex: selectedIndex >= 0 ? selectedIndex : null,
-            allOptions: groupElements.map(el => this.getOptionText(el)),
-            playwrightAction: 'check',
+            question: questionText,
+            value: selectedEl.value,
+            label: this.getOptionText(selectedEl),
+            index: selectedIndex >= 0 ? selectedIndex : null,
+            options: groupElements.map(el => this.getOptionText(el)),
+            action: 'check',
             // For parameterization
             parameter: {
                 name: this.generateParamName(questionText),
