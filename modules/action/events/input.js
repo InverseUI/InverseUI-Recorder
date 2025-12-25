@@ -8,6 +8,7 @@ export class InputEventTracker {
         this.sendMessage = sendMessage;
         this.getXpaths = getXpaths;
         this.dropdownDetector = null;  // Reactive dropdown detector
+        this.clickToEditDetector = null;  // Click-to-edit pattern detector
     }
 
     /**
@@ -15,6 +16,13 @@ export class InputEventTracker {
      */
     setDropdownDetector(detector) {
         this.dropdownDetector = detector;
+    }
+
+    /**
+     * Set the click-to-edit detector for inline edit patterns
+     */
+    setClickToEditDetector(detector) {
+        this.clickToEditDetector = detector;
     }
 
     /**
@@ -66,6 +74,9 @@ export class InputEventTracker {
 
     handleInput(event) {
         const target = event.target;
+
+        // Skip file inputs - they're handled by change event only
+        if (target.type === 'file') return;
 
         // Record input for dropdown detection correlation (always, even if not recording)
         if (this.dropdownDetector) {
@@ -147,11 +158,32 @@ export class InputEventTracker {
                 size: file.size,
                 type: file.type
             }));
+            // Use real filename instead of browser's fakepath
+            changeData.content = changeData.files[0]?.name || '';
         }
 
         // Generate ARIA snapshot for context
         const snapshot = ariaSnapshotGenerator.generateForElement(target);
         changeData.ariaSnapshot = snapshot.yaml;
+
+        // Check for click-to-edit pattern (merge with recent click)
+        if (this.clickToEditDetector) {
+            const mergeData = this.clickToEditDetector.checkForMerge(target, target.value);
+            if (mergeData) {
+                // Send CLICK_TO_EDIT instead of SET
+                this.sendMessage({
+                    message: "onClickToEdit",
+                    xPath: mergeData.inputXpath,
+                    content: mergeData.content,
+                    activator: mergeData.activator,
+                    activatorSnapshot: mergeData.activatorSnapshot,
+                    fieldInfo: changeData.fieldInfo,
+                    locator: getPlaywrightSelector(target)
+                });
+                console.log('🖱️ Click-to-edit detected, sending CLICK_TO_EDIT instead of SET');
+                return;
+            }
+        }
 
         this.sendMessage(changeData);
     }

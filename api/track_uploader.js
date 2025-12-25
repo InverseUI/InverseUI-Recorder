@@ -61,10 +61,10 @@ export async function sendTrackToBackend(trackingLog, popupWindowId, actionOnlyM
         // Prepare request body matching server expectations
         const requestBody = {
             url: activeTab?.url || '',
+            title: activeTab?.title || '',
             actions: trackingLog,
             // Optional metadata can be included if server supports it
             metadata: {
-                title: activeTab?.title || '',
                 timestamp: Date.now(),
                 extensionVersion: chrome.runtime.getManifest().version,
                 actionsCount: trackingLog.length

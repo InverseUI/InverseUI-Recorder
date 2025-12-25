@@ -42,13 +42,16 @@ export const FORM_ACTIONS = {
     SET: "SET",                               // Handler: onChange -> SET (field value changes)
     INPUT: "INPUT",                           // Handler: onInput -> INPUT (text input for autocomplete, etc.)
 
+    // Click-to-edit pattern (activate display element, then type into revealed input)
+    CLICK_TO_EDIT: "CLICK_TO_EDIT",           // Handler: onClickToEdit -> CLICK_TO_EDIT (date pickers, inline edits, etc.)
+
     // Text selection
     SELECT: "SELECT",                         // Handler: onSelect
-    
+
     // Form submission
     SUBMIT: "SUBMIT",                         // Handler: onSubmit
     RESET: "RESET",                           // Handler: onReset
-    
+
     // Validation
     INVALID: "INVALID"                        // Handler: onInvalid
 };
@@ -324,6 +327,19 @@ export const MESSAGE_HANDLER_MAPPING = {
             validationMessage: request.validationMessage
         })
     },
+    'onClickToEdit': {
+        actionType: ACTION_TYPES.CLICK_TO_EDIT,
+        category: ACTION_CATEGORIES.FORM,
+        handler: (request) => ({
+            browserAction: ACTION_TYPES.CLICK_TO_EDIT,
+            xpath: request.xPath,                    // XPath of the input element
+            content: request.content,                // Final value entered
+            activator: request.activator,            // XPath/selector of the display element that was clicked
+            activatorSnapshot: request.activatorSnapshot,  // ARIA snapshot at click time
+            fieldInfo: request.fieldInfo,
+            locator: request.locator
+        })
+    },
 
     // Window event handlers
     'onWindowResize': { 
@@ -403,7 +419,8 @@ import {
     DEBOUNCER_TIME,
     SELECTION_CHANGE_DEBOUNCE,
     POINTER_MOVE_DEBOUNCE,
-    WINDOW_RESIZE_DEBOUNCE
+    WINDOW_RESIZE_DEBOUNCE,
+    SCROLL_DEBOUNCE
 } from './config.js';
 
 // Re-export for backward compatibility
@@ -411,5 +428,6 @@ export {
     DEBOUNCER_TIME,
     SELECTION_CHANGE_DEBOUNCE,
     POINTER_MOVE_DEBOUNCE,
-    WINDOW_RESIZE_DEBOUNCE
+    WINDOW_RESIZE_DEBOUNCE,
+    SCROLL_DEBOUNCE
 };

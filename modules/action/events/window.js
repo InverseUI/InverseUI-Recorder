@@ -4,6 +4,7 @@ export class WindowEventTracker {
         this.sendMessage = sendMessage;
         this.getXpaths = getXpaths;
         this.resizeDebounced = this.debounce(this.handleResize.bind(this), 500);
+        this.scrollDebounced = this.debounce(this.handleScroll.bind(this), 300);
         this.lastWindowSize = {
             width: window.innerWidth,
             height: window.innerHeight
@@ -25,8 +26,8 @@ export class WindowEventTracker {
         // Document events
         document.addEventListener('fullscreenchange', this.handleFullscreenChange.bind(this), true);
 
-        // Scroll events (both window and element level)
-        window.addEventListener('scroll', this.handleScroll.bind(this), true);
+        // Scroll events (both window and element level) - debounced to capture final position
+        window.addEventListener('scroll', this.scrollDebounced, true);
 
         // Note: popstate is handled by NavigationTracker for unified URL change tracking
     }

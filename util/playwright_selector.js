@@ -291,6 +291,88 @@ function getElementAccessibleName(element) {
 }
 
 /**
+ * Count how many elements on the page match a given selector candidate
+ * Used to check if a selector is unique
+ */
+function countMatchingElements(candidate) {
+    try {
+        if (candidate.method === 'getByRole') {
+            const role = candidate.role;
+            const name = candidate.name;
+
+            // Find all elements with this role
+            const allElements = document.querySelectorAll('*');
+            let count = 0;
+
+            for (const el of allElements) {
+                if (getAriaRole(el) === role) {
+                    if (name) {
+                        // Check if accessible name matches
+                        if (getElementAccessibleName(el) === name) {
+                            count++;
+                        }
+                    } else {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+
+        if (candidate.method === 'getByLabel') {
+            const label = candidate.label;
+            const allElements = document.querySelectorAll('input, select, textarea, button');
+            let count = 0;
+            for (const el of allElements) {
+                const labels = getElementLabels(el);
+                if (labels.some(l => l.normalized === label)) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        if (candidate.method === 'getByPlaceholder') {
+            return document.querySelectorAll(`[placeholder="${CSS.escape(candidate.placeholder)}"]`).length;
+        }
+
+        if (candidate.method === 'getByTestId') {
+            return document.querySelectorAll(`[data-testid="${CSS.escape(candidate.testId)}"]`).length;
+        }
+
+        if (candidate.method === 'locator') {
+            return document.querySelectorAll(candidate.selector).length;
+        }
+
+        if (candidate.method === 'getByText') {
+            const text = candidate.text;
+            const allElements = document.querySelectorAll('*');
+            let count = 0;
+            for (const el of allElements) {
+                const elText = elementText(el).normalized;
+                if (elText === text || elText.includes(text)) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        if (candidate.method === 'getByTitle') {
+            return document.querySelectorAll(`[title="${CSS.escape(candidate.title)}"]`).length;
+        }
+
+        if (candidate.method === 'getByAltText') {
+            return document.querySelectorAll(`[alt="${CSS.escape(candidate.alt)}"]`).length;
+        }
+
+        // For other methods, assume unique
+        return 1;
+    } catch (e) {
+        return 1;
+    }
+}
+
+/**
  * Check if ID looks like a GUID (from selectorGenerator.ts lines 479-506)
  */
 function isGuidLike(id) {
@@ -468,6 +550,7 @@ function buildCandidates(element, testIdAttributeName = 'data-testid') {
 /**
  * Get the best Playwright selector for an element
  * Returns object with method and params
+ * Prioritizes unique selectors over non-unique ones
  */
 export function getPlaywrightSelector(element) {
     if (!element) {
@@ -480,9 +563,23 @@ export function getPlaywrightSelector(element) {
     // Sort by score (lower is better)
     candidates.sort((a, b) => a.score - b.score);
 
-    // Return the best candidate (remove the score property)
-    const best = candidates[0];
-    const { score, ...result } = best;
+    // Find the best UNIQUE candidate
+    for (const candidate of candidates) {
+        const count = countMatchingElements(candidate);
+        if (count === 1) {
+            const { score, ...result } = candidate;
+            return result;
+        }
+    }
+
+    // No unique candidate found - prefer ID if available (even if GUID-like)
+    const idAttr = element.getAttribute('id');
+    if (idAttr) {
+        return { method: 'locator', selector: `#${CSS.escape(idAttr)}` };
+    }
+
+    // Fallback to best candidate even if not unique
+    const { score, ...result } = candidates[0];
     return result;
 }
 

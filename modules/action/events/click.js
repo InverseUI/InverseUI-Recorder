@@ -11,6 +11,7 @@ export class ClickEventTracker {
         this.fileUploadDetector = null;
         this.choiceDetector = null;
         this.radioDetector = null;
+        this.clickToEditDetector = null;
     }
 
     /**
@@ -39,6 +40,13 @@ export class ClickEventTracker {
      */
     setRadioDetector(detector) {
         this.radioDetector = detector;
+    }
+
+    /**
+     * Set the click-to-edit detector for inline edit patterns
+     */
+    setClickToEditDetector(detector) {
+        this.clickToEditDetector = detector;
     }
 
     debounce(func, wait) {
@@ -254,6 +262,12 @@ export class ClickEventTracker {
         }
 
         // ARIA snapshot was already generated early in the function
+
+        // Record click for click-to-edit detection (potential activator for subsequent inputs)
+        if (this.clickToEditDetector) {
+            this.clickToEditDetector.recordClick(target, xpaths, snapshot.yaml);
+        }
+
         console.log('✅ Sending click action:', clickData);
         this.sendMessage(clickData);
     }

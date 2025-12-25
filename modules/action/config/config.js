@@ -8,6 +8,7 @@ export const DEBOUNCER_TIME = 100;
 export const SELECTION_CHANGE_DEBOUNCE = 500;
 export const POINTER_MOVE_DEBOUNCE = 100;
 export const WINDOW_RESIZE_DEBOUNCE = 500;
+export const SCROLL_DEBOUNCE = 300;  // 300ms delay after scrolling stops
 
 
 /**
