@@ -1,7 +1,5 @@
 # InverseUI
 
-**UI Interaction to Code. Muscle Memory for Agents.**
-
 Record your browser actions and generate automation scripts that understand what you're trying to do. Run with your own credentials on your own machine — no cloud, no data leaving your browser. When something breaks, it fixes itself and keeps going. Full access to your local files for real-world workflows.
 
 ---
@@ -134,4 +132,4 @@ For the complete API reference, see [Developer Guides](https://inverseui.com/doc
 
 ## License
 
-MIT
+AGPL-3.0 — If you modify or use this code, you must publish your changes under the same license.
